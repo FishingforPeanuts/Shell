@@ -15,6 +15,7 @@
     3. 
 */
 
+char * history_file_path = NULL;
 char ** history_file = NULL;
 char ** script_file = NULL;
 
@@ -59,11 +60,13 @@ int execute_command(char *argv[]) {
         waitpid(child_id, &status, 0);
         if(WEXITSTATUS(status) != 0 || !WIFEXITED(status)) {
 			print_wait_fail();
+            return 1;
 		}
     } else {
         pid_t id = getpid();
         execvp(argv[0], argv);
         print_exec_fail(id);
+        exit(EXIT_FAILURE);
     }
     return 0;
 }
@@ -169,22 +172,32 @@ struct op_args get_op_args(int size, char ** input, char* delim) {
     return args;
 }
 
+void execute_op_expression(char * op, char** args) {
+    struct op_args args2 = get_op_args(cvector_size(args), args, op);
+    if (!strcmp(op, "&&")) {
+        if (!execute_command(args2.argv1)) {
+            execute_command(args2.argv2);
+        }
+    } else if (!strcmp(op, "||")) {
+        if (execute_command(args2.argv1)) {
+            execute_command(args2.argv2);
+        }
+    } else if (!strcmp(op, ";;")) {
+        execute_command(args2.argv1);
+        execute_command(args2.argv2);
+    }
+}
 
 
 int main(int argc, char *argv[]) {
-    char * input = "echo dfgdfg ;; ls";
+    char * input = "echo dfgdfg || ls";
     char ** args = parse_input(input);
     char * op = contains_op(cvector_size(args), args);
     if (op) {
-        struct op_args args2 = get_op_args(cvector_size(args), args, op);
-        execute_command(args2.argv1);
-        execute_command(args2.argv2);
+        execute_op_expression(op, args);
     } else {
-        // singular command
+        execute_expression(args);
     }
-    
-    //printf("\n");
-    
     parse_args(argc, argv);
     cvector_free(history_file);
     cvector_free(script_file);
