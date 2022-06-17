@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdbool.h>
 #include <stdlib.h>
 #include "c-vector/cvector.h"
@@ -7,6 +8,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
+#define MAX_BUF 300
+
 /*
     1. -h <filename>
         - load history from given file, after exit: append history to file.
@@ -14,7 +18,7 @@
         - loads file and runs/prints commands, saves into history file.
     3. 
 */
-
+char * cwd = NULL;
 char * history_file_path = NULL;
 char ** history_file = NULL;
 char ** script_file = NULL;
@@ -51,6 +55,7 @@ void print_read_fail(char * filename) {
 }
 
 int execute_command(char *argv[]) {
+    fflush(stdout);
     pid_t child_id = fork();
     if (child_id == -1) {
         print_fork_fail(); 
@@ -101,6 +106,8 @@ void parse_args(int argc, char *argv[]) {
         { 
             case 'h':
                 history_file = read_file(optarg);
+                char buf[PATH_MAX];
+                history_file_path = realpath(optarg, buf);
                 break;
             case 'f':
                 script_file = read_file(optarg);
@@ -150,6 +157,39 @@ char * contains_op(int size, char ** input) {
     return NULL;
 }
 
+
+
+void change_directory(char * path) {
+    if (path[0] == '/') {
+        char buf[PATH_MAX];
+        char * temp_path = realpath(path, buf);
+        if (temp_path) {
+            free(cwd);
+            cwd = temp_path;
+        }
+    } else {
+        char * cpy = malloc(strlen(cwd) + strlen(path) + 2);
+        sprintf(cpy, "%s/%s", cwd, path);
+        char buf[PATH_MAX];
+        char * temp_path = realpath(cpy, buf);
+        if (temp_path) {
+            free(cwd);
+            cwd = temp_path;
+        }
+        free(cpy);
+    }
+    
+}
+
+bool is_builtin(char ** args) {
+    if (args) {
+        if (args[0] == "cd") {
+            change_directory(args[1]);
+        }
+    }
+    return true;
+}
+
 struct op_args get_op_args(int size, char ** input, char* delim) {
     struct op_args args;
     char ** argv1 = NULL;
@@ -190,13 +230,16 @@ void execute_op_expression(char * op, char** args) {
 
 
 int main(int argc, char *argv[]) {
+    cwd = get_current_dir_name();
+    is_builtin(test_args);
+    printf("%s\n",cwd);
     char * input = "echo dfgdfg || ls";
     char ** args = parse_input(input);
     char * op = contains_op(cvector_size(args), args);
     if (op) {
         execute_op_expression(op, args);
     } else {
-        execute_expression(args);
+        //execute_expression(args);
     }
     parse_args(argc, argv);
     cvector_free(history_file);
