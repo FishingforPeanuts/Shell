@@ -66,7 +66,7 @@ int execute_command(char *argv[]) {
         if(WEXITSTATUS(status) != 0 || !WIFEXITED(status)) {
 			print_wait_fail();
             return 1;
-		}
+        }
     } else {
         pid_t id = getpid();
         execvp(argv[0], argv);
@@ -157,8 +157,6 @@ char * contains_op(int size, char ** input) {
     return NULL;
 }
 
-
-
 void change_directory(char * path) {
     if (path[0] == '/') {
         char buf[PATH_MAX];
@@ -228,10 +226,16 @@ void execute_op_expression(char * op, char** args) {
     }
 }
 
+void print_history() {
+    for (int i = 0; i < cvector_size(history_file); ++i) {
+        printf("%lu    %s", i, history_file[i]);
+    }
+}
+
 
 int main(int argc, char *argv[]) {
     cwd = get_current_dir_name();
-    is_builtin(test_args);
+    //is_builtin(test_args);
     printf("%s\n",cwd);
     char * input = "echo dfgdfg || ls";
     char ** args = parse_input(input);
@@ -242,6 +246,7 @@ int main(int argc, char *argv[]) {
         //execute_expression(args);
     }
     parse_args(argc, argv);
+    print_history();
     cvector_free(history_file);
     cvector_free(script_file);
     return 0;
