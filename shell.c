@@ -131,9 +131,24 @@ char ** parse_input(char * input) {
     strcpy(cpy, input);
     char * arg = strtok(cpy, " ");
     while (arg != NULL) {
+        arg[strcspn(arg, " \r\n")] = 0;
         cvector_push_back(ret, arg);
         arg = strtok(NULL, " ");
     }
+    return ret;
+}
+
+char ** parse_history(char * input) {
+    char ** ret = NULL;
+    char * cpy = malloc(sizeof(input));
+    strcpy(cpy, input);
+    char * arg = strtok(cpy, " ");
+    while (arg != NULL) {
+        arg[strcspn(arg, " \r\n")] = 0;
+        cvector_push_back(ret, arg);
+        arg = strtok(NULL, " ");
+    }
+    cvector_push_back(ret, NULL);
     return ret;
 }
 
@@ -232,11 +247,19 @@ void print_history() {
     }
 }
 
+void execute_history(int target) {
+    for (int i = 0; i < cvector_size(history_file); ++i) {
+        if (i == target) {
+            execute_command(parse_history(history_file[i]));
+        }
+    }
+}
+
 
 int main(int argc, char *argv[]) {
     cwd = get_current_dir_name();
     //is_builtin(test_args);
-    printf("%s\n",cwd);
+    //printf("%s\n",cwd);
     char * input = "echo dfgdfg || ls";
     char ** args = parse_input(input);
     char * op = contains_op(cvector_size(args), args);
@@ -246,7 +269,8 @@ int main(int argc, char *argv[]) {
         //execute_expression(args);
     }
     parse_args(argc, argv);
-    print_history();
+    execute_history(2);
+    //print_history();
     cvector_free(history_file);
     cvector_free(script_file);
     return 0;
